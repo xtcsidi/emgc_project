@@ -16,8 +16,24 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+try:
+    from rich.logging import RichHandler
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
+    from rich.progress import track
+    RICH_AVAILABLE = True
+    console = Console()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True)]
+    )
+except ImportError:
+    RICH_AVAILABLE = False
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
 log = logging.getLogger("P2PNode")
 
 # Add parent directory to path to import emgc package
@@ -304,7 +320,11 @@ class P2PNode:
             self.emgc_optimizer.apply_elastic_quantization(snap)
             self.emgc_optimizer.apply_thermal_pruning(snap)
             
-        for images, labels in self.train_loader:
+        loader_iter = self.train_loader
+        if RICH_AVAILABLE:
+            loader_iter = track(self.train_loader, description=f"[bold cyan]Training Epoch {epoch}...[/bold cyan]")
+            
+        for images, labels in loader_iter:
             images, labels = images.to(self.device), labels.to(self.device)
             with self.lock:
                 self.optimizer.zero_grad()
@@ -396,13 +416,28 @@ if __name__ == "__main__":
         scenario = NODE_SCENARIOS.get(args.node_id, [{"vram": 1000, "temp": 45}] * args.rounds)
         
         for rnd in range(1, args.rounds + 1):
-            print(f"\n--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---")
+            if RICH_AVAILABLE:
+                console.rule(f"[bold magenta]--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---[/bold magenta]")
+            else:
+                print(f"\n--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---")
             
             # Inject dynamic hardware fluctuations for this round
             state = scenario[rnd - 1] if rnd <= len(scenario) else scenario[-1]
             node.sim_vram_used = state["vram"]
             node.sim_temp = state["temp"]
-            log.info(f"[{args.node_id}] Current HW State: VRAM={state['vram']}MB, Temp={state['temp']}C")
+            
+            if RICH_AVAILABLE:
+                table = Table(title=f"Node: {args.node_id} | Status Dashboard", box=box.ROUNDED)
+                table.add_column("Metric", style="cyan")
+                table.add_column("Value", style="bold yellow")
+                table.add_row("VRAM Used", f"{state['vram']} MB")
+                table.add_row("Temperature", f"{state['temp']} °C")
+                table.add_row("Active Peers", str(len(node.peers)))
+                for p in node.peers:
+                    table.add_row(" ↳ Peer Address", f"{p[0]}:{p[1]}")
+                console.print(table)
+            else:
+                log.info(f"[{args.node_id}] Current HW State: VRAM={state['vram']}MB, Temp={state['temp']}C")
             
             # 1. Train local epoch on real data partition
             node.train_epoch(rnd)
