@@ -177,7 +177,7 @@ class P2PNode:
     def _run_server(self):
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_sock.bind(("127.0.0.1", self.port))
+        server_sock.bind(("0.0.0.0", self.port))
         server_sock.listen(5)
         server_sock.settimeout(1.0)
         
@@ -261,8 +261,14 @@ class P2PNode:
             conn.close()
 
     # ── P2P Gossip Broadcasting ───────────────────────────────────────────────
-    def gossip_to_peer(self, peer_port):
+    def gossip_to_peer(self, peer):
         """Serialize state and transmit over TCP socket to peer."""
+        if isinstance(peer, tuple):
+            peer_ip, peer_port = peer
+        else:
+            peer_ip = "127.0.0.1"
+            peer_port = int(peer)
+            
         try:
             # 1. Generate P2PPacket via EMGC controller
             with self.lock:
@@ -270,9 +276,9 @@ class P2PNode:
                 
             serialized_bytes = packet.serialize()
             
-            # 2. Open TCP connection to target port
+            # 2. Open TCP connection to target IP and port
             client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_sock.connect(("127.0.0.1", peer_port))
+            client_sock.connect((peer_ip, peer_port))
             
             # 3. Write bytes and close
             client_sock.sendall(serialized_bytes)
@@ -280,10 +286,10 @@ class P2PNode:
             
             log.info(
                 f"▶▶ [{self.node_id}] Transmitted P2PPacket ({len(serialized_bytes) / 1024:.1f} KB) "
-                f"to peer port {peer_port}. Precision: {packet.precision.value}, Sparsity: {packet.metadata['sparsity']:.1%}"
+                f"to peer {peer_ip}:{peer_port}. Precision: {packet.precision.value}, Sparsity: {packet.metadata['sparsity']:.1%}"
             )
         except Exception as e:
-            log.warning(f"[{self.node_id}] Gossip link to port {peer_port} failed: {e}")
+            log.warning(f"[{self.node_id}] Gossip link to {peer_ip}:{peer_port} failed: {e}")
 
     # ── Local Training Loop ───────────────────────────────────────────────────
     def train_epoch(self, epoch):
@@ -359,7 +365,19 @@ if __name__ == "__main__":
     parser.add_argument("--total_shards", type=int, default=3, help="Total number of nodes/shards in the network")
     args = parser.parse_args()
     
-    peer_list = [int(p.strip()) for p in args.peers.split(",") if p.strip()]
+    peer_list = []
+    if args.peers:
+        for p in args.peers.split(","):
+            p = p.strip()
+            if not p:
+                continue
+            if ":" in p:
+                parts = p.split(":")
+                peer_ip = parts[0].strip()
+                peer_port = int(parts[1].strip())
+                peer_list.append((peer_ip, peer_port))
+            else:
+                peer_list.append(("127.0.0.1", int(p)))
     
     node = P2PNode(
         node_id=args.node_id,
