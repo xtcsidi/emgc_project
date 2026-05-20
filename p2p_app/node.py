@@ -491,8 +491,8 @@ if __name__ == "__main__":
         torch.save(node.model.state_dict(), save_path)
         
         if RICH_AVAILABLE:
-            console.print(f"\n[bold green]✅ Model weights successfully saved to: {save_path}[/bold green]")
+            console.print(f"\n[bold green][SAVED] Model weights successfully saved to: {save_path}[/bold green]")
         else:
-            print(f"\n✅ Model weights successfully saved to: {save_path}")
+            print(f"\n[SAVED] Model weights successfully saved to: {save_path}")
             
         print(f"[{args.node_id}] Node execution completed cleanly.")

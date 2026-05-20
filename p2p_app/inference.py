@@ -86,16 +86,16 @@ def main():
         console.print(f"[bold cyan]True Label:[/bold cyan] {true_label}")
         console.print(f"[bold magenta]Model Prediction:[/bold magenta] {prediction}")
         if prediction == true_label:
-            console.print("\n[bold green]✅ SUCCESS! Your Federated Model recognized the digit perfectly![/bold green]\n")
+            console.print("\n[bold green][SUCCESS] Your Federated Model recognized the digit perfectly![/bold green]\n")
         else:
-            console.print("\n[bold red]❌ INCORECT. The model made a mistake on this one.[/bold red]\n")
+            console.print("\n[bold red][INCORRECT] The model made a mistake on this one.[/bold red]\n")
     else:
         print(f"True Label: {true_label}")
         print(f"Model Prediction: {prediction}")
         if prediction == true_label:
-            print("\n✅ SUCCESS! Your Federated Model recognized the digit perfectly!\n")
+            print("\n[SUCCESS] Your Federated Model recognized the digit perfectly!\n")
         else:
-            print("\n❌ INCORECT. The model made a mistake on this one.\n")
+            print("\n[INCORRECT] The model made a mistake on this one.\n")
 
 if __name__ == "__main__":
     main()
