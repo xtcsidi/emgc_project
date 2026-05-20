@@ -127,14 +127,23 @@ class P2PNode:
                 snap.gpu_temp_c = self.outer.sim_temp
                 return snap
                 
-        self.emgc_optimizer = SimulatedNodeOptimizer(
-            outer_self=self,
-            model=self.model,
-            node_id=self.node_id,
-            vram_threshold=0.80,
-            temp_threshold=80.0,
-            prune_amount=0.20
-        )
+        if self.node_id in NODE_SCENARIOS:
+            self.emgc_optimizer = SimulatedNodeOptimizer(
+                outer_self=self,
+                model=self.model,
+                node_id=self.node_id,
+                vram_threshold=0.80,
+                temp_threshold=80.0,
+                prune_amount=0.20
+            )
+        else:
+            self.emgc_optimizer = MemoryGatedOptimizer(
+                model=self.model,
+                node_id=self.node_id,
+                vram_threshold=0.80,
+                temp_threshold=80.0,
+                prune_amount=0.20
+            )
         
         # Capture optimizer device
         self.device = self.emgc_optimizer.device
@@ -422,9 +431,16 @@ if __name__ == "__main__":
                 print(f"\n--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---")
             
             # Inject dynamic hardware fluctuations for this round
-            state = scenario[rnd - 1] if rnd <= len(scenario) else scenario[-1]
-            node.sim_vram_used = state["vram"]
-            node.sim_temp = state["temp"]
+            if args.node_id in NODE_SCENARIOS:
+                state = scenario[rnd - 1] if rnd <= len(scenario) else scenario[-1]
+                node.sim_vram_used = state["vram"]
+                node.sim_temp = state["temp"]
+            else:
+                snap = node.emgc_optimizer.profile_hardware()
+                state = {
+                    "vram": round(snap.vram_used_mb, 1),
+                    "temp": round(snap.gpu_temp_c, 1)
+                }
             
             if RICH_AVAILABLE:
                 table = Table(title=f"Node: {args.node_id} | Status Dashboard", box=box.ROUNDED)
