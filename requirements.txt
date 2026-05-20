@@ -1,0 +1,6 @@
+torch
+torchvision
+pynvml
+psutil
+flwr
+# optional: bitsandbytes

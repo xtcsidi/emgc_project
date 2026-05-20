@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyTorch and general dataset paths
+data/
+*.pt
+*.pth
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log and temporary files
+*.log
+.system_generated/
+.gemini/
+
+# IDE configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
