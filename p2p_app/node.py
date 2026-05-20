@@ -368,7 +368,7 @@ class P2PNode:
                 correct += predicted.eq(labels).sum().item()
         
         val_acc = correct / total
-        log.info(f"[{self.node_id}] 📊 Validation Accuracy (MNIST Test Set): {val_acc:.2%}")
+        log.info(f"[{self.node_id}] [EVAL] Validation Accuracy (MNIST Test Set): {val_acc:.2%}")
         return val_acc
 
     def stop(self):
