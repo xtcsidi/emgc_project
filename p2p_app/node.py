@@ -421,17 +421,26 @@ if __name__ == "__main__":
     time.sleep(2)  # Allow port binding to stabilize
     
     try:
-        # Load volatility scenario sequence
-        scenario = NODE_SCENARIOS.get(args.node_id, [{"vram": 1000, "temp": 45}] * args.rounds)
-        
-        for rnd in range(1, args.rounds + 1):
+        rnd = 1
+        while True:
+            # Physical nodes run continuously; Simulated nodes stop after args.rounds
+            if args.node_id in NODE_SCENARIOS and rnd > args.rounds:
+                break
+                
             if RICH_AVAILABLE:
-                console.rule(f"[bold magenta]--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---[/bold magenta]")
+                if args.node_id in NODE_SCENARIOS:
+                    console.rule(f"[bold magenta]--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---[/bold magenta]")
+                else:
+                    console.rule(f"[bold magenta]--- [{args.node_id}] ROUND {rnd} (Continuous) ---[/bold magenta]")
             else:
-                print(f"\n--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---")
+                if args.node_id in NODE_SCENARIOS:
+                    print(f"\n--- [{args.node_id}] ROUND {rnd}/{args.rounds} ---")
+                else:
+                    print(f"\n--- [{args.node_id}] ROUND {rnd} (Continuous) ---")
             
             # Inject dynamic hardware fluctuations for this round
             if args.node_id in NODE_SCENARIOS:
+                scenario = NODE_SCENARIOS[args.node_id]
                 state = scenario[rnd - 1] if rnd <= len(scenario) else scenario[-1]
                 node.sim_vram_used = state["vram"]
                 node.sim_temp = state["temp"]
@@ -467,7 +476,10 @@ if __name__ == "__main__":
                 target_peer = random.choice(node.peers)
                 node.gossip_to_peer(target_peer)
                 
-            time.sleep(4)  # Small wait to let threads digest gossip packets
+            if args.node_id in NODE_SCENARIOS:
+                time.sleep(4)  # Small wait to let threads digest gossip packets in local emulation
+                
+            rnd += 1
             
     except KeyboardInterrupt:
         log.info("Interrupted, shutting down.")
